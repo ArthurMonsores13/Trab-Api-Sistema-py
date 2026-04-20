@@ -3,4 +3,3 @@ from .models import Tarefa
 
 
 admin.site.register(Tarefa)
-
