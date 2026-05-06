@@ -2,27 +2,50 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from .models import Tarefa
 from usuarios.models import Usuario
-from datetime import datetime
+from datetime import datetime, date
 
 
 def index(request):
     return render(request, 'index.html')
 
 
+def _tarefa_to_dict(tarefa):
+    return {
+        'id': tarefa.id,
+        'titulo': tarefa.titulo,
+        'descricao': tarefa.descricao,
+        'status': tarefa.status,
+        'prioridade': tarefa.prioridade,
+        'data_criacao': tarefa.data_criacao,
+        'data_entrega': tarefa.data_entrega,
+        'usuario_responsavel_nome': tarefa.usuario_responsavel.nome if tarefa.usuario_responsavel else None,
+    }
+
+
 def listar_tarefas(request):
     tarefas = Tarefa.objects.select_related('usuario_responsavel').all()
-    resultado = []
-    for tarefa in tarefas:
-        resultado.append({
-            'id': tarefa.id,
-            'titulo': tarefa.titulo,
-            'descricao': tarefa.descricao,
-            'status': tarefa.status,
-            'data_criacao': tarefa.data_criacao,
-            'data_entrega': tarefa.data_entrega,
-            'usuario_responsavel_nome': tarefa.usuario_responsavel.nome if tarefa.usuario_responsavel else None,
-        })
-    return JsonResponse(resultado, safe=False)
+    return JsonResponse([_tarefa_to_dict(t) for t in tarefas], safe=False)
+
+
+def tarefas_por_prioridade(request, prioridade):
+    tarefas = Tarefa.objects.select_related('usuario_responsavel').filter(prioridade=prioridade.upper())
+    return JsonResponse([_tarefa_to_dict(t) for t in tarefas], safe=False)
+
+
+def tarefa_por_id(request, id):
+    try:
+        tarefa = Tarefa.objects.select_related('usuario_responsavel').get(pk=id)
+        return JsonResponse(_tarefa_to_dict(tarefa))
+    except Tarefa.DoesNotExist:
+        return JsonResponse({'erro': f'Tarefa com id {id} não encontrada.'}, status=404)
+
+
+def tarefas_urgentes_abertas(request):
+    tarefas = Tarefa.objects.select_related('usuario_responsavel').filter(
+        status='ABERTA',
+        prioridade='URGENTE',
+    )
+    return JsonResponse([_tarefa_to_dict(t) for t in tarefas], safe=False)
 
 
 def criar_tarefa(request):
