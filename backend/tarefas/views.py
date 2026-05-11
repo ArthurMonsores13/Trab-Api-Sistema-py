@@ -40,6 +40,25 @@ def tarefa_por_id(request, id):
         return JsonResponse({'erro': f'Tarefa com id {id} não encontrada.'}, status=404)
 
 
+def tarefas_atrasadas(request):
+    tarefas = Tarefa.objects.select_related('usuario_responsavel').filter(
+        data_entrega__lt=date.today(),
+    ).exclude(status='CONCLUIDA')
+    return JsonResponse([_tarefa_to_dict(t) for t in tarefas], safe=False)
+
+
+def buscar_tarefas(request):
+    palavra = request.GET.get('q', '').strip()
+    if not palavra:
+        return JsonResponse({'erro': 'Parâmetro "q" é obrigatório.'}, status=400)
+    tarefas = Tarefa.objects.select_related('usuario_responsavel').filter(
+        titulo__icontains=palavra,
+    ) | Tarefa.objects.select_related('usuario_responsavel').filter(
+        descricao__icontains=palavra,
+    )
+    return JsonResponse([_tarefa_to_dict(t) for t in tarefas.distinct()], safe=False)
+
+
 def tarefas_urgentes_abertas(request):
     tarefas = Tarefa.objects.select_related('usuario_responsavel').filter(
         status='ABERTA',
